@@ -342,6 +342,3 @@ with projects_tab:
                         st.success("Income deleted and logged.")
                         st.rerun()
 
-
-st.write(os.getcwd())
-st.write(os.listdir())
