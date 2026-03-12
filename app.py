@@ -29,49 +29,51 @@ DIVISOR = 120  # All money inputs divided by 120
 
 st.set_page_config(page_title="💰 DKSV TEAM", layout="wide")
 
-# --------------------------
-# AUTHENTICATION
-# --------------------------
-if "authenticator" not in st.session_state:
-    st.session_state.authenticator, st.session_state.users = setup_authentication()
+# =========================================================
+# AUTHENTICATION SETUP
+# =========================================================
 
-authenticator = st.session_state.authenticator
+authenticator, users = setup_authentication()
+
+# First-time setup: no users exist → show registration only
+if len(users) == 0:
+    st.title("💰 DKSV TEAM")
+    st.info("No users found. Please create the first admin account.")
+    register_user_ui()
+    st.stop()
+
+# Try login safely
+try:
+    authenticator.login(location="main")
+except Exception:
+    st.error("Authentication system error. Please reload the page.")
+    st.stop()
+
 authentication_status = st.session_state.get("authentication_status")
 username = st.session_state.get("username")
 name = st.session_state.get("name")
 
-# --------------------------
-# LOGIN PAGE
-# --------------------------
-if not authentication_status:
-    c1, c2 = st.columns([8, 1])
-    with c1:
-        st.title("💰 DKSV TEAM")
-        st.markdown(
-            """
-            <p style='font-size: 1.2em; color: #2196F3; font-weight: 500; margin-top: -10px;'>
-                🌟 <i>One Team, One Vision, Stronger Together</i> 💪
-            </p>
-            """,
-            unsafe_allow_html=True,
-        )
-    with c2:
-        with st.popover("👤 Login"):
-            st.write("### 🔐 Login")
-            authenticator.login(location="main")
-            if authentication_status is False:
-                st.error("❌ Incorrect username or password")
-            elif authentication_status is None:
-                st.info("👆 Please enter your credentials")
-            st.divider()
-            with st.popover("🆕 Register New User"):
-                register_user_ui()
-    st.divider()
+# =========================================================
+# LOGIN GATE
+# =========================================================
+
+if authentication_status is None:
+    st.title("💰 DKSV TEAM")
+    st.info("🔐 Please log in to continue.")
     st.stop()
 
-# --------------------------
-# LOGGED-IN HEADER
-# --------------------------
+if authentication_status is False:
+    st.title("💰 DKSV TEAM")
+    st.error("❌ Incorrect username or password")
+    st.stop()
+
+# At this point: user is authenticated
+user_role = get_user_role(username) or "viewer"
+
+# =========================================================
+# HEADER & ACCOUNT INFO
+# =========================================================
+
 c1, c2 = st.columns([8, 1])
 with c1:
     st.title("💰 DKSV TEAM")
@@ -85,29 +87,31 @@ with c1:
     )
 with c2:
     with st.popover("⚙️"):
-        user_role = get_user_role(username) or "viewer"
         st.write("### Account Info")
         st.write(f"**Name:** {name}")
         st.write(f"**Username:** {username}")
         st.write(f"**Role:** {user_role.upper()}")
         st.divider()
+
+        # SAFE LOGOUT — only shown when logged in
         if authentication_status:
             authenticator.logout("🚪 Logout", "main")
+
 st.divider()
 
-# --------------------------
-# INIT DB & TABS
-# --------------------------
+# =========================================================
+# INIT DB & LOAD DATA
+# =========================================================
+
 init_db()
-user_role = get_user_role(username) or "viewer"
+df = get_all_contributions()
 
 main_tab, projects_tab = st.tabs(["📊 Monthly Contributions", "🎯 Special Projects"])
 
-df = get_all_contributions()
+# =========================================================
+# SIDEBAR (ADMIN ONLY)
+# =========================================================
 
-# --------------------------
-# SIDEBAR (ADMIN)
-# --------------------------
 if user_role == "admin":
     with st.sidebar:
         st.header("🛠️ Admin Controls")
@@ -150,9 +154,10 @@ else:
     with st.sidebar:
         st.info("One Step At a Time")
 
-# --------------------------
+# =========================================================
 # MAIN TAB — MONTHLY CONTRIBUTIONS
-# --------------------------
+# =========================================================
+
 with main_tab:
     st.header("📊 Monthly Contributions")
 
@@ -167,7 +172,7 @@ with main_tab:
 
         st.divider()
 
-        # Expected per month check (per member, per month)
+        # Expected per month check
         st.subheader("📅 Monthly Expected Contribution Check")
         monthly_group = df.groupby(["month", "member"], as_index=False)["amount"].sum()
 
@@ -194,7 +199,7 @@ with main_tab:
 
         st.divider()
 
-        # Simple chart by member
+        # Chart by member
         st.subheader("📈 Total by Member")
         by_member = df.groupby("member", as_index=False)["amount"].sum()
         fig = px.bar(
@@ -207,9 +212,10 @@ with main_tab:
         )
         st.plotly_chart(fig, use_container_width=True)
 
-# --------------------------
+# =========================================================
 # SPECIAL PROJECTS TAB
-# --------------------------
+# =========================================================
+
 with projects_tab:
     st.header("🎯 Special Projects")
 
@@ -254,12 +260,12 @@ with projects_tab:
             if user_role == "admin":
                 with st.expander("➕ Add Special Contribution"):
                     with st.form(f"add_contrib_{project['id']}"):
-                        name = st.text_input("Contributor Name")
+                        contrib_name = st.text_input("Contributor Name")
                         amount_raw = st.number_input("Amount", min_value=0.0)
                         notes = st.text_area("Notes")
                         if st.form_submit_button("Add"):
                             amount = round(amount_raw / DIVISOR, 2)
-                            add_special_project_contribution(project["id"], name, amount, notes)
+                            add_special_project_contribution(project["id"], contrib_name, amount, notes)
                             st.success("Contribution added.")
                             st.rerun()
 
@@ -289,9 +295,9 @@ with projects_tab:
                     if not reason.strip():
                         st.error("Please provide a reason.")
                     else:
-                        contrib_id = int(contrib_df.loc[
-                            contrib_df["label"] == selected, "id"
-                        ].iloc[0])
+                        contrib_id = int(
+                            contrib_df.loc[contrib_df["label"] == selected, "id"].iloc[0]
+                        )
                         delete_special_contribution_with_reason(contrib_id, username, reason)
                         st.success("Contribution deleted and logged.")
                         st.rerun()
@@ -335,10 +341,9 @@ with projects_tab:
                     if not reason.strip():
                         st.error("Please provide a reason.")
                     else:
-                        income_id = int(income_df.loc[
-                            income_df["label"] == selected, "id"
-                        ].iloc[0])
+                        income_id = int(
+                            income_df.loc[income_df["label"] == selected, "id"].iloc[0]
+                        )
                         delete_project_income_with_reason(income_id, username, reason)
                         st.success("Income deleted and logged.")
                         st.rerun()
-
