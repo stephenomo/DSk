@@ -10,22 +10,26 @@ Features:
 - Secure bcrypt hashing
 """
 
-import streamlit as st
-import streamlit_authenticator as stauth
+import os
 import sqlite3
 import bcrypt
+import streamlit as st
+import streamlit_authenticator as stauth
 
-# ==========================
-# CONFIG
-# ==========================
 
-DB_FILE = "users.db"
+# =========================================================
+# DATABASE CONFIG
+# =========================================================
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_FILE = os.path.join(BASE_DIR, "users.db")
+
 SIGNATURE_KEY = "simple_auth_key_12345"
 
 
-# ==========================
+# =========================================================
 # DATABASE INITIALIZATION
-# ==========================
+# =========================================================
 
 def init_users_db():
     """Create users table if it does not exist."""
@@ -47,9 +51,9 @@ def init_users_db():
     conn.close()
 
 
-# ==========================
+# =========================================================
 # USER RETRIEVAL
-# ==========================
+# =========================================================
 
 def load_users_from_db():
     """
@@ -117,9 +121,9 @@ def get_user_count():
     return count
 
 
-# ==========================
+# =========================================================
 # USER CREATION
-# ==========================
+# =========================================================
 
 def user_exists(username):
     """Check if a username already exists."""
@@ -163,9 +167,9 @@ def save_user_to_db(username, name, hashed_password, email=None):
         return False
 
 
-# ==========================
+# =========================================================
 # PASSWORD MANAGEMENT
-# ==========================
+# =========================================================
 
 def update_password(username, new_password):
     """Update a user's password (hashed)."""
@@ -206,9 +210,9 @@ def verify_user_email(username, email):
     return match
 
 
-# ==========================
+# =========================================================
 # AUTHENTICATOR SETUP
-# ==========================
+# =========================================================
 
 def setup_authentication():
     """
@@ -231,9 +235,9 @@ def setup_authentication():
     return authenticator, users
 
 
-# ==========================
+# =========================================================
 # REGISTRATION UI
-# ==========================
+# =========================================================
 
 def register_user_ui():
     """Streamlit UI for registering a new user."""
@@ -279,9 +283,9 @@ def register_user_ui():
                 st.error("Registration failed")
 
 
-# ==========================
+# =========================================================
 # PASSWORD RESET UI
-# ==========================
+# =========================================================
 
 def reset_password_ui():
     """Streamlit UI for resetting a password."""
