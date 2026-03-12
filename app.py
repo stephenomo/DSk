@@ -25,7 +25,7 @@ from database import (
     get_project_financial_summary,
 )
 
-DIVISOR = 120  # All money inputs divided by 120
+DIVISOR = 120
 
 st.set_page_config(page_title="💰 DKSV TEAM", layout="wide")
 
@@ -67,7 +67,7 @@ if authentication_status is False:
     st.error("❌ Incorrect username or password")
     st.stop()
 
-# At this point: user is authenticated
+# User is authenticated
 user_role = get_user_role(username) or "viewer"
 
 # =========================================================
@@ -112,9 +112,15 @@ main_tab, projects_tab = st.tabs(["📊 Monthly Contributions", "🎯 Special Pr
 # SIDEBAR (ADMIN ONLY)
 # =========================================================
 
-if user_role == "admin":
-    with st.sidebar:
+with st.sidebar:
+    if user_role == "admin":
         st.header("🛠️ Admin Controls")
+
+        # Admin-only registration
+        st.subheader("🆕 Register New User")
+        register_user_ui()
+
+        st.divider()
 
         # Add contribution
         st.subheader("➕ Add Contribution")
@@ -150,8 +156,8 @@ if user_role == "admin":
                     st.rerun()
         else:
             st.info("No entries to delete.")
-else:
-    with st.sidebar:
+
+    else:
         st.info("One Step At a Time")
 
 # =========================================================
