@@ -30,6 +30,15 @@ DIVISOR = 120
 st.set_page_config(page_title="💰 DKSV TEAM", layout="wide")
 
 # =========================================================
+# WAKE-UP FIX: FORCE AUTH REBUILD
+# =========================================================
+
+# When Render wakes up, session_state is empty.
+# This ensures authenticator is rebuilt cleanly every time.
+if "force_reauth" not in st.session_state:
+    st.session_state.force_reauth = True
+
+# =========================================================
 # AUTHENTICATION SETUP
 # =========================================================
 
@@ -46,7 +55,9 @@ if len(users) == 0:
 try:
     authenticator.login(location="main")
 except Exception:
-    st.error("Authentication system error. Please reload the page.")
+    st.warning("The server just woke up. Please reload the page.")
+    if st.button("🔄 Reload App"):
+        st.rerun()
     st.stop()
 
 authentication_status = st.session_state.get("authentication_status")
