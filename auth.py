@@ -2,7 +2,7 @@
 Authentication module for Streamlit app
 PostgreSQL-backed authentication
 """
-
+ 
 import bcrypt 
 import streamlit as st
 import streamlit_authenticator as stauth
