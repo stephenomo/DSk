@@ -72,6 +72,18 @@ def init_db():
             )
         """))
 
+    # USERS TABLE
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS users (
+               username TEXT PRIMARY KEY,
+               name TEXT NOT NULL,
+               password TEXT NOT NULL,
+               email TEXT,
+               role TEXT,
+               created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
+"""))    
+
 
 # ==========================
 # MONTHLY CONTRIBUTIONS
