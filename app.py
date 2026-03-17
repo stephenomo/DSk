@@ -233,6 +233,8 @@ with main_tab:
 # SPECIAL PROJECTS TAB
 # =========================================================
 
+from datetime import date
+
 with projects_tab:
     st.header("🎯 Special Projects")
 
@@ -252,41 +254,98 @@ with projects_tab:
                     else:
                         proj_target = round(proj_target_raw / DIVISOR, 2)
                         deadline_str = proj_deadline.isoformat() if proj_deadline else None
-                        create_special_project(proj_name, proj_desc, proj_target, deadline_str, proj_doc)
+                        create_special_project(
+                            proj_name,
+                            proj_desc,
+                            proj_target,
+                            deadline_str,
+                            proj_doc,
+                        )
                         st.success("Project created.")
                         st.rerun()
 
     # List projects
     projects_df = get_all_special_projects()
+
     if projects_df.empty:
         st.info("No special projects yet.")
     else:
         for _, project in projects_df.iterrows():
             st.divider()
+
+            # =========================
+            # PROJECT TITLE
+            # =========================
             st.subheader(f"📌 {project['project_name']}")
+
             if project["description"]:
                 st.write(project["description"])
 
+            # =========================
+            # STATUS LOGIC
+            # =========================
+            deadline = project["deadline"]
+
+            if deadline:
+                try:
+                    deadline_date = date.fromisoformat(deadline)
+                    status = "🟢 Active" if deadline_date >= date.today() else "🔴 Inactive"
+                except:
+                    status = "⚪ Unknown"
+            else:
+                status = "🟢 Active"
+
+            # =========================
+            # TARGET + STATUS DISPLAY
+            # =========================
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.write(f"🎯 **Target:** ${project['target_amount']:,.2f}")
+
+            with col2:
+                st.write(f"📌 **Status:** {status}")
+
+            # =========================
+            # FINANCIAL SUMMARY
+            # =========================
             summary = get_project_financial_summary(project["id"])
+
             c1, c2, c3 = st.columns(3)
             c1.metric("Contributions", f"${summary['contributions']:,.2f}")
             c2.metric("Income", f"${summary['income']:,.2f}")
             c3.metric("Total", f"${summary['total']:,.2f}")
 
-            # Add special contribution
+            # =========================
+            # PROGRESS BAR
+            # =========================
+            target = project["target_amount"] or 0
+            progress = (summary["total"] / target) if target > 0 else 0
+
+            st.progress(min(progress, 1.0))
+            st.write(f"{progress * 100:.1f}% of target reached")
+
+            # =========================
+            # ADD SPECIAL CONTRIBUTION
+            # =========================
             if user_role == "admin":
                 with st.expander("➕ Add Special Contribution"):
                     with st.form(f"add_contrib_{project['id']}"):
                         contrib_name = st.text_input("Contributor Name")
                         amount_raw = st.number_input("Amount", min_value=0.0)
                         notes = st.text_area("Notes")
+
                         if st.form_submit_button("Add"):
                             amount = round(amount_raw / DIVISOR, 2)
-                            add_special_project_contribution(project["id"], contrib_name, amount, notes)
+                            add_special_project_contribution(
+                                project["id"], contrib_name, amount, notes
+                            )
                             st.success("Contribution added.")
                             st.rerun()
 
-            # Show contributions
+            # =========================
+            # SHOW CONTRIBUTIONS
+            # =========================
             contrib_df = get_special_project_contributions(project["id"])
             st.subheader("📋 Contributions")
             st.dataframe(contrib_df, use_container_width=True)
@@ -295,15 +354,18 @@ with projects_tab:
                 contrib_df["label"] = contrib_df.apply(
                     lambda r: f"{r['name']} | ${r['amount']:.2f}", axis=1
                 )
+
                 selected = st.selectbox(
                     "Select contribution to delete:",
                     contrib_df["label"],
                     key=f"sel_contrib_{project['id']}",
                 )
+
                 reason = st.text_area(
                     "Reason for deletion (required)",
                     key=f"reason_contrib_{project['id']}",
                 )
+
                 if st.button(
                     "Delete Contribution",
                     key=f"btn_del_contrib_{project['id']}",
@@ -313,26 +375,37 @@ with projects_tab:
                         st.error("Please provide a reason.")
                     else:
                         contrib_id = int(
-                            contrib_df.loc[contrib_df["label"] == selected, "id"].iloc[0]
+                            contrib_df.loc[
+                                contrib_df["label"] == selected, "id"
+                            ].iloc[0]
                         )
-                        delete_special_contribution_with_reason(contrib_id, username, reason)
+                        delete_special_contribution_with_reason(
+                            contrib_id, username, reason
+                        )
                         st.success("Contribution deleted and logged.")
                         st.rerun()
 
-            # Add income
+            # =========================
+            # ADD INCOME
+            # =========================
             if user_role == "admin":
                 with st.expander("➕ Add Project Income"):
                     with st.form(f"add_income_{project['id']}"):
                         source = st.text_input("Income Source")
                         amount_raw = st.number_input("Amount", min_value=0.0)
                         notes = st.text_area("Notes")
+
                         if st.form_submit_button("Add Income"):
                             amount = round(amount_raw / DIVISOR, 2)
-                            add_project_income(project["id"], source, amount, notes)
+                            add_project_income(
+                                project["id"], source, amount, notes
+                            )
                             st.success("Income added.")
                             st.rerun()
 
-            # Show income
+            # =========================
+            # SHOW INCOME
+            # =========================
             income_df = get_project_income(project["id"])
             st.subheader("📋 Income")
             st.dataframe(income_df, use_container_width=True)
@@ -341,15 +414,18 @@ with projects_tab:
                 income_df["label"] = income_df.apply(
                     lambda r: f"{r['source']} | ${r['amount']:.2f}", axis=1
                 )
+
                 selected = st.selectbox(
                     "Select income to delete:",
                     income_df["label"],
                     key=f"sel_income_{project['id']}",
                 )
+
                 reason = st.text_area(
                     "Reason for deletion (required)",
                     key=f"reason_income_{project['id']}",
                 )
+
                 if st.button(
                     "Delete Income",
                     key=f"btn_del_income_{project['id']}",
@@ -359,8 +435,12 @@ with projects_tab:
                         st.error("Please provide a reason.")
                     else:
                         income_id = int(
-                            income_df.loc[income_df["label"] == selected, "id"].iloc[0]
+                            income_df.loc[
+                                income_df["label"] == selected, "id"
+                            ].iloc[0]
                         )
-                        delete_project_income_with_reason(income_id, username, reason)
+                        delete_project_income_with_reason(
+                            income_id, username, reason
+                        )
                         st.success("Income deleted and logged.")
                         st.rerun()
